@@ -1,0 +1,16 @@
+{
+  "name": "sunshot-recorder",
+  "version": "1.0.1",
+  "description": "C++ Native Node Module for SunShot Screen Recorder",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alex Goodman",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "nan": "^2.10.0",
+    "node-gyp-build": "^4.6.0"
+  }
+}
