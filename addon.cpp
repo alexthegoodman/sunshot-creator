@@ -1,6 +1,8 @@
 #include <nan.h>
 #include <stdio.h>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 extern "C" {
   #include <libavformat/avformat.h>
@@ -11,6 +13,46 @@ extern "C" {
 
 using namespace v8;
 using namespace std;
+
+class ProgressWorker : public Nan::AsyncProgressWorker {
+ public:
+  ProgressWorker(Nan::Callback *callback)
+    : Nan::AsyncProgressWorker(callback) {}
+
+  void Execute (const Nan::AsyncProgressWorker::ExecutionProgress& progress) {
+    // This is your background thread. Do your processing here,
+    // and periodically call progress.Send to send progress updates.
+
+    for (double percentage = 0; percentage <= 100; percentage += 10) {
+        // Here we're just sending a single byte at a time, but you could send a
+        // larger chunk of data if needed.
+        char percentDone = static_cast<char>(percentage);
+        progress.Send(&percentDone, 1);
+
+        // Sleep for one second to simulate work being done
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
+  void HandleProgressCallback(const char *data, size_t size) {
+    // This function is called in the main thread whenever you call
+    // progress.Send. You can use it to emit progress events.
+
+    Nan::HandleScope scope;
+
+    // Extract the percentage complete from the data pointer
+    int percentComplete = *data;
+
+    // Call the JavaScript callback with the progress percentage
+    v8::Local<v8::Value> argv[] = { Nan::New<v8::Number>(percentComplete) };
+    callback->Call(1, argv, async_resource);
+  }
+};
+
+NAN_METHOD(StartWorker) {
+  Nan::Callback *callback = new Nan::Callback(info[0].As<v8::Function>());
+  Nan::AsyncQueueWorker(new ProgressWorker(callback));
+}
 
 NAN_METHOD(CreateGradientVideo) {
   const char* filename = "source.mp4";
@@ -41,6 +83,7 @@ NAN_METHOD(Print) {
 }
 
 NAN_MODULE_INIT(InitAll) {
+  Nan::Set(target, Nan::New<String>("startWorker").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(StartWorker)).ToLocalChecked());
   Nan::Set(target, Nan::New<String>("print").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(Print)).ToLocalChecked());
   Nan::Set(target, Nan::New<String>("createGradientVideo").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(CreateGradientVideo)).ToLocalChecked());
 }
