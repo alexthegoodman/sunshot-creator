@@ -7,6 +7,7 @@
                 "<!(node -e \"require('nan')\")",
 				"<!(node -p \"require('node-addon-api').include\")",
 				"C:/Users/alext/scoop/apps/ffmpeg-shared/6.0/include",
+                "C:/Users/alext/vcpkg/packages/nlohmann-json_x86-windows/include",
 			],
 			# "dependencies": [
 			# 	"<!(node -p \"require('node-addon-api').gyp\")"

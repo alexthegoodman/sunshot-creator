@@ -3,6 +3,7 @@
 C++ Native Node Module for SunShot (Electron) which allows for creation of stylized video files.
 
 Make sure FFmpeg is installed with scoop and that it's bin folder is added to your PATH.
+Install nlohmann-json.
 
 ```
 `volta install node@16.16.0`
