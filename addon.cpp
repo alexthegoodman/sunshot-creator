@@ -19,16 +19,16 @@ using namespace std;
 
 using json = nlohmann::json;
 
-struct ZoomInfo {
-    int startTimestamp;
-    int endTimestamp;
-    double zoom;
-};
+// struct ZoomInfo {
+//     int start;
+//     int end;
+//     double zoom;
+// };
 
-std::vector<ZoomInfo> mockZoomInfo = {
-    {1000, 6000, 0.5},
-    {9000, 14000, 0.6}
-};
+// std::vector<ZoomInfo> mockZoomInfo = {
+//     {1000, 6000, 0.5},
+//     {9000, 14000, 0.6}
+// };
 
 #define GRADIENT_SPEED 2
 #define ZOOM_FACTOR 2.0
@@ -67,11 +67,23 @@ double frictionalAnimation(double target, double current, double velocity, doubl
     return newVelocity;
 }
 
-static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& progress)
+static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorker::ExecutionProgress& progress)
 {   
+    printf("Extracting JSON...\n");
+
+    // Extract values from the JSON object
+    int duration = config["duration"];
+    std::string positionsFile = config["positionsFile"];
+    std::string sourceFile = config["sourceFile"];
+    std::string inputFile = config["inputFile"];
+    std::string outputFile = config["outputFile"];
+    std::vector<nlohmann::json> zoomInfo = config["zoomInfo"];
+
+    printf("Duration: %d\n", duration);
+
     printf("Opening Mouse Events...\n");
 
-    std::ifstream mouseEventsFile("stubs/project1/mousePositions.json");
+    std::ifstream mouseEventsFile(positionsFile);
     
     if (!mouseEventsFile.is_open()) {
         printf("Could not open mouse events file\n");
@@ -90,7 +102,7 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
 
     printf("Opening Window Data...\n");
 
-    std::ifstream windowDataFile("stubs/project1/sourceData.json");
+    std::ifstream windowDataFile(sourceFile);
     json windowDataJson;
     windowDataFile >> windowDataJson;
 
@@ -100,8 +112,8 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
     avformat_network_init();
 
     // *** decode video ***
-    const char* filename = "stubs/project1/cli60.mp4";
-    const char* outputFilename = "stubs/project1/output.mp4";
+    const char* filename = inputFile.c_str();
+    const char* outputFilename = outputFile.c_str();
     int fpsInt = 60;
 
     AVFormatContext* decoderFormatCtx = avformat_alloc_context();
@@ -242,7 +254,7 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
     double velocity = 0.0;
 
     // duration * fpsInt
-    int totalFrames = decoderFormatCtx->streams[videoStream]->duration * fpsInt;
+    int totalFrames = (duration / 1000) * fpsInt;
     int frameIndex = 0;
     int successfulFrameIndex = 0;
 
@@ -377,54 +389,52 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
                 // Search for the current zoom level
                 
                 double targetMultiplier = 1.0; // Default value when no zoom effect is active
-                for (auto zoomInfoIt = mockZoomInfo.begin(); zoomInfoIt != mockZoomInfo.end(); ++zoomInfoIt) {
-                    auto& zoomInfo = *zoomInfoIt;
-                    if (zoomInfoIt != mockZoomInfo.end()) {
-                        auto &zoomInfo = *zoomInfoIt;
-                        if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.endTimestamp) {
-                        // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
-                            if (zoomingIn == false) {
-                                velocity = 0;
-                                velocityMouseX = 0;
-                                velocityMouseY = 0;
-                                velocityWidth = 0;
-                                velocityHeight = 0;
-                                // tension2 = 0.4; // really small values work better for zoom out
-                                // friction2 = 0.8;
-                                // currentMouseX = mouseX; // setting to mouseX causes a jump?
-                                // currentMouseY = mouseY;
-                                zoomingIn = true;
-                                printf("Zooming In\n");
-                            }
-                            // Rest of the zooming in code...
-                            targetMultiplier = zoomInfo.zoom;
-                            // break;
-                        } else if (timeElapsed >= zoomInfo.endTimestamp && timeElapsed < zoomInfo.endTimestamp + 1000) {
-                            if (zoomingIn == true) {
-                                velocity = 0;
-                                velocityMouseX = 0;
-                                velocityMouseY = 0;
-                                velocityWidth = 0;
-                                velocityHeight = 0;
-                                // tension2 = 0.004; // really small values work better for zoom out
-                                // friction2 = 0.008;
-                                // currentMouseX = mouseX;
-                                // currentMouseY = mouseY;
-                                zoomingIn = false;
-                                printf("Zooming Out\n");
-                            }
-                            // Rest of the zooming out code...
-                            targetMultiplier = 1.0;
-                            // break;
+                for (nlohmann::json& zoom : zoomInfo) {
+                    int start = zoom["start"];
+                    int end = zoom["end"];
+                    double zoomFactor = zoom["zoom"];
+
+                    // Process each zoom info...
+                    if (timeElapsed >= start && timeElapsed < end) {
+                    // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
+                        if (zoomingIn == false) {
+                            velocity = 0;
+                            velocityMouseX = 0;
+                            velocityMouseY = 0;
+                            velocityWidth = 0;
+                            velocityHeight = 0;
+                            // tension2 = 0.4; // really small values work better for zoom out
+                            // friction2 = 0.8;
+                            // currentMouseX = mouseX; // setting to mouseX causes a jump?
+                            // currentMouseY = mouseY;
+                            zoomingIn = true;
+                            printf("Zooming In\n");
                         }
-                        // else {
-                        //     zoomingIn = false;
-                        //     printf("Reset Zoom\n");
-                        //     // break;
-                        // }
+                        // Rest of the zooming in code...
+                        targetMultiplier = zoomFactor;
+                        // break;
+                    } else if (timeElapsed >= end && timeElapsed < end + 1000) {
+                        if (zoomingIn == true) {
+                            velocity = 0;
+                            velocityMouseX = 0;
+                            velocityMouseY = 0;
+                            velocityWidth = 0;
+                            velocityHeight = 0;
+                            // tension2 = 0.004; // really small values work better for zoom out
+                            // friction2 = 0.008;
+                            // currentMouseX = mouseX;
+                            // currentMouseY = mouseY;
+                            zoomingIn = false;
+                            printf("Zooming Out\n");
+                        }
+                        // Rest of the zooming out code...
+                        targetMultiplier = 1.0;
+                        // break;
                     }
-                    //  else {
+                    // else {
                     //     zoomingIn = false;
+                    //     printf("Reset Zoom\n");
+                    //     // break;
                     // }
                 }
                 
@@ -535,70 +545,68 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
                         }
                     }
                 } else {
-                    for (auto zoomInfoIt = mockZoomInfo.begin(); zoomInfoIt != mockZoomInfo.end(); ++zoomInfoIt) {
-                        auto& zoomInfo = *zoomInfoIt;
-                        if (zoomInfoIt != mockZoomInfo.end()) {
-                            auto &zoomInfo = *zoomInfoIt;
-                            if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.endTimestamp) {
-                            // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
-                                if (zoomingIn2 == false) {
-                                    printf("Zooming In 2 Init\n");
-                                    // set mouse coods to the first mouse event after the start timestamp
-                                    for (size_t i = 0; i < mouseEventsJson.size(); ++i) {
-                                        if (mouseEventsJson[i]["timestamp"] >= timeElapsed) {
-                                            mouseX = mouseEventsJson[i]["x"].get<double>();
-                                            mouseY = mouseEventsJson[i]["y"].get<double>();
-                                            break;
-                                        }
-                                    }
-                                    zoomingIn2 = true;
+                    for (nlohmann::json& zoom : zoomInfo) {
+                      int start = zoom["start"];
+                      int end = zoom["end"];
+                      double zoomFactor = zoom["zoom"];
 
-                                    // add windowOffset
-                                    mouseX += windowDataJson["x"].get<double>();
-                                    mouseY += windowDataJson["y"].get<double>();
+                      // Process each zoom info...
+                      if (timeElapsed >= start && timeElapsed < end) {
+                      // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
+                          if (zoomingIn2 == false) {
+                              printf("Zooming In 2 Init\n");
+                              // set mouse coods to the first mouse event after the start timestamp
+                              for (size_t i = 0; i < mouseEventsJson.size(); ++i) {
+                                  if (mouseEventsJson[i]["timestamp"] >= timeElapsed) {
+                                      mouseX = mouseEventsJson[i]["x"].get<double>();
+                                      mouseY = mouseEventsJson[i]["y"].get<double>();
+                                      break;
+                                  }
+                              }
+                              zoomingIn2 = true;
 
-                                    // // scale mouse positions
-                                    // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
-                                    // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+                              // add windowOffset
+                              mouseX += windowDataJson["x"].get<double>();
+                              mouseY += windowDataJson["y"].get<double>();
 
-                                    if (!autoZoom) {
-                                        currentMouseX = mouseX;
-                                        currentMouseY = mouseY;
-                                    }
+                              // // scale mouse positions
+                              // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
+                              // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
 
-                                    directionX = mouseX - currentMouseX;
-                                    directionY = mouseY - currentMouseY;
-                                    printf("Zooming In 2\n");
-                                    // break;
-                                }
-                            } else if (timeElapsed >= zoomInfo.endTimestamp && timeElapsed < zoomInfo.endTimestamp + 1000) {
-                                if (zoomingIn2 == true) {
-                                    zoomingIn2 = false;
+                              if (!autoZoom) {
+                                  currentMouseX = mouseX;
+                                  currentMouseY = mouseY;
+                              }
 
-                                    // TODO: make DRY
-                                    // add windowOffset
-                                    mouseX += windowDataJson["x"].get<double>();
-                                    mouseY += windowDataJson["y"].get<double>();
+                              directionX = mouseX - currentMouseX;
+                              directionY = mouseY - currentMouseY;
+                              printf("Zooming In 2\n");
+                              // break;
+                          }
+                      } else if (timeElapsed >= end && timeElapsed < end + 1000) {
+                          if (zoomingIn2 == true) {
+                              zoomingIn2 = false;
 
-                                    // // scale mouse positions
-                                    // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
-                                    // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+                              // TODO: make DRY
+                              // add windowOffset
+                              mouseX += windowDataJson["x"].get<double>();
+                              mouseY += windowDataJson["y"].get<double>();
 
-                                    directionX = mouseX - currentMouseX;
-                                    directionY = mouseY - currentMouseY;
-                                    printf("Zooming Out 2\n");
-                                    // break;
-                                }
-                            }
-                            // else {
-                            //     zoomingIn2 = false;
-                            //     printf("Reset Zoom 2\n");
-                            //     break;
-                            // }
-                        }
-                        //  else {
-                        //     zoomingIn = false;
-                        // }
+                              // // scale mouse positions
+                              // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
+                              // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+
+                              directionX = mouseX - currentMouseX;
+                              directionY = mouseY - currentMouseY;
+                              printf("Zooming Out 2\n");
+                              // break;
+                          }
+                      }
+                      // else {
+                      //     zoomingIn2 = false;
+                      //     printf("Reset Zoom 2\n");
+                      //     break;
+                      // }
                     }
                 }
                 
@@ -813,7 +821,7 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
         av_packet_free(&inputPacket);
         frameIndex++;
 
-        int percentage = round(frameIndex / totalFrames * 100);
+        int percentage = round(((double) frameIndex / (double) totalFrames) * 100.0);
         char percentDone = static_cast<char>(percentage);
         progress.Send(&percentDone, 1);
     }
@@ -863,27 +871,24 @@ static int transform_video (const Nan::AsyncProgressWorker::ExecutionProgress& p
 }
 
 class ProgressWorker : public Nan::AsyncProgressWorker {
+  nlohmann::json config;
+  // Nan::Callback *callback;
+
  public:
-  ProgressWorker(Nan::Callback *callback)
-    : Nan::AsyncProgressWorker(callback) {}
+  ProgressWorker(nlohmann::json config, Nan::Callback *callback)
+    : Nan::AsyncProgressWorker(callback) {
+    this->config = config;
+  }
+
+  ~ProgressWorker() {}
 
   void Execute (const Nan::AsyncProgressWorker::ExecutionProgress& progress) {
     printf("Execute...\n");
     // This is your background thread. Do your processing here,
     // and periodically call progress.Send to send progress updates.
 
-    // for (double percentage = 0; percentage <= 100; percentage += 10) {
-    //     // Here we're just sending a single byte at a time, but you could send a
-    //     // larger chunk of data if needed.
-    //     char percentDone = static_cast<char>(percentage);
-    //     progress.Send(&percentDone, 1);
-
-    //     // Sleep for one second to simulate work being done
-    //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    // }
-
     // transform video
-    transform_video(progress);
+    transform_video(config, progress);
   }
 
   void HandleProgressCallback(const char *data, size_t size) {
@@ -902,8 +907,23 @@ class ProgressWorker : public Nan::AsyncProgressWorker {
 };
 
 NAN_METHOD(StartWorker) {
-  Nan::Callback *callback = new Nan::Callback(info[0].As<v8::Function>());
-  Nan::AsyncQueueWorker(new ProgressWorker(callback));
+  printf("Setup Worker...\n");
+
+  // Convert the V8 object to a JSON string
+  v8::String::Utf8Value jsonStr(info.GetIsolate(), info[0]->ToString(Nan::GetCurrentContext()).ToLocalChecked());
+
+  printf("Parse JSON... %s\n", *jsonStr);
+
+  // Parse the JSON string into a nlohmann::json object
+  nlohmann::json config = nlohmann::json::parse(*jsonStr);
+
+  printf("Create Callback...\n");
+
+  Nan::Callback *callback = new Nan::Callback(info[1].As<v8::Function>());
+  
+  printf("Start Worker...\n");
+
+  Nan::AsyncQueueWorker(new ProgressWorker(config, callback));
 }
 
 NAN_METHOD(CreateGradientVideo) {
