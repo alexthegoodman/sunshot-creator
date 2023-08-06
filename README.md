@@ -22,3 +22,6 @@ For Electron:
 or
 `node-gyp rebuild --target=21.4.4 --arch=x64 --dist-url=https://electronjs.org/headers`
 ```
+
+For NPM package:
+`npm publish``
