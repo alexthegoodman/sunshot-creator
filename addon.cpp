@@ -273,7 +273,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     // Set the tension and friction to control the behavior of the animation.
     double friction1 = 2.5;
     // double tension2 = 0.001;
-    double friction2 = 3.5; // for frictional
+    double friction2 = 3; // for frictional
     // double tension3 = 0.01;
     double friction3 = 5; // for frictional
 
@@ -484,7 +484,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 velocityHeight = velocityHeight > 10000 ? 10000 : velocityHeight < -10000 ? -10000 : velocityHeight;
 
                 // test smoothing
-                double smoothingFactor1 = 0.2;
+                double smoothingFactor1 = 0.02;
                 if (successfulFrameIndex == 0) {
                     smoothWidth = currentWidth + (smoothingFactor1 * currentWidth + (1 - smoothingFactor1) * smoothWidth);
                     smoothHeight = currentHeight + (smoothingFactor1 * currentHeight + (1 - smoothingFactor1) * smoothHeight);
@@ -500,16 +500,6 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 zoomWidth = zoomWidth > bg_frame->width ? bg_frame->width : zoomWidth < 1 ? 1 : zoomWidth;
                 int zoomHeight = round(smoothHeight);
                 zoomHeight = zoomHeight > bg_frame->height ? bg_frame->height : zoomHeight < 1 ? 1 : zoomHeight;
-
-                // Calculate the top left position of the zoomed portion.
-                // Center the zoomed portion in the frame.
-                // int zoomTop = (bg_frame->height - zoomHeight) / 2;
-                // int zoomLeft = (bg_frame->width - zoomWidth) / 2;
-
-                // Calculate the top left position of the zoom frame,
-                // making sure it's centered on the mouse position and not going out of bounds.
-                // int zoomLeft = std::max(0, std::min(static_cast<int>(std::round(mouseX - currentWidth / 2)), static_cast<int>(bg_frame->width - currentWidth)));
-                // int zoomTop = std::max(0, std::min(static_cast<int>(std::round(mouseY - currentHeight / 2)), static_cast<int>(bg_frame->height - currentHeight)));
 
                 // animate the mouse positions as well
                 if (autoZoom) {
@@ -549,8 +539,8 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                       double zoomFactor = zoom["zoom"];
 
                       // Process each zoom info...
-                      if (timeElapsed >= start && timeElapsed < end) {
-                      // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
+                    //   if (timeElapsed >= start && timeElapsed < end) {
+                      if (timeElapsed >= start && timeElapsed < start + 1000) {
                           if (zoomingIn2 == false) {
                               printf("Zooming In 2 Init\n");
                               // set mouse coods to the first mouse event after the start timestamp
@@ -699,7 +689,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     smoothZoomLeft = zoomLeft;
                 }
 
-                double smoothingFactor = 0.2; // Adjust this value to change the amount of smoothing (0-1)
+                double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
                 smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
                 smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
 
