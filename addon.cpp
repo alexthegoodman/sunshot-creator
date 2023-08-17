@@ -273,7 +273,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     // Set the tension and friction to control the behavior of the animation.
     double friction1 = 2.5;
     // double tension2 = 0.001;
-    double friction2 = 5; // for frictional
+    double friction2 = 3.5; // for frictional
     // double tension3 = 0.01;
     double friction3 = 5; // for frictional
 
@@ -341,7 +341,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // *** Inset Video *** //
 
                 // Scale down the frame using libswscale.
-                double scaleMultiple = 0.75;
+                double scaleMultiple = 0.75; // TODO: should be 0.8?
 
                 struct SwsContext* swsCtx = sws_getContext(
                     frame->width, frame->height, (enum AVPixelFormat)frame->format,
@@ -381,8 +381,6 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 // Determine the portion of the background to zoom in on.
                 // Start with the entire frame and gradually decrease these dimensions.
-                // Use your springAnimation function to animate this process.
-                // You will need to determine appropriate values for these variables.
                 static double targetWidth = bg_frame->width;
                 static double targetHeight = bg_frame->height;
 
@@ -486,7 +484,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 velocityHeight = velocityHeight > 10000 ? 10000 : velocityHeight < -10000 ? -10000 : velocityHeight;
 
                 // test smoothing
-                double smoothingFactor1 = 0.1;
+                double smoothingFactor1 = 0.2;
                 if (successfulFrameIndex == 0) {
                     smoothWidth = currentWidth + (smoothingFactor1 * currentWidth + (1 - smoothingFactor1) * smoothWidth);
                     smoothHeight = currentHeight + (smoothingFactor1 * currentHeight + (1 - smoothingFactor1) * smoothHeight);
@@ -669,8 +667,14 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // zoomLeft = std::max(0, static_cast<int>(std::min(currentMouseX - centerX, centerX - targetWidth / 2)));
 
                 // round to nearest 10 number
-                zoomTop = std::round(zoomTop / 10.0) * 10;
-                zoomLeft = std::round(zoomLeft / 10.0) * 10;
+                // zoomTop = std::round(zoomTop / 10.0) * 10;
+                // zoomLeft = std::round(zoomLeft / 10.0) * 10;
+                // int remainderTop = zoomTop % 10;
+                // int remainderLeft = zoomLeft % 10;
+                // zoomTop = remainderTop < 5 ? zoomTop - remainderTop : zoomTop + (10 - remainderTop);
+                // zoomLeft = remainderLeft < 5 ? zoomLeft - remainderLeft : zoomLeft + (10 - remainderLeft);
+
+                // printf("Mid Info1: %d, %d\n", zoomTop, zoomLeft);
 
                 // max clamps
                 if (zoomTop + zoomHeight > bg_frame->height) {
@@ -680,7 +684,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     zoomLeft = bg_frame->width - zoomWidth;
                 }
 
-                printf("Mid Info: %d, %d\n", zoomTop, zoomLeft);
+                printf("Mid Info2: %d, %d\n", zoomTop, zoomLeft);
 
                 // clamp zoomTop and zoomLeft
                 zoomTop = zoomTop > bg_frame->height ? bg_frame->height : zoomTop;
@@ -695,7 +699,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     smoothZoomLeft = zoomLeft;
                 }
 
-                double smoothingFactor = 0.1; // Adjust this value to change the amount of smoothing (0-1)
+                double smoothingFactor = 0.2; // Adjust this value to change the amount of smoothing (0-1)
                 smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
                 smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
 
@@ -716,6 +720,12 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 }
 
                 // printf("Mid Info: %d, %d\n", zoomTop, zoomLeft);
+
+                // round to nearest 10
+                // int smoothRemainderTop = smoothZoomTop % 10;
+                // int smoothRemainderLeft = smoothZoomLeft % 10;
+                // smoothZoomTop = smoothRemainderTop < 5 ? smoothZoomTop - smoothRemainderTop : smoothZoomTop + (10 - smoothRemainderTop);
+                // smoothZoomLeft = smoothRemainderLeft < 5 ? smoothZoomLeft - smoothRemainderLeft : smoothZoomLeft + (10 - smoothRemainderLeft);
 
                 // clamp zoomTop and zoomLeft
                 smoothZoomTop = smoothZoomTop > bg_frame->height ? bg_frame->height : smoothZoomTop;
@@ -746,14 +756,6 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 // Get pointers to the zoomed portion in the background frame.
                 uint8_t* zoomData[3];
-                // zoomData[0] = &bg_frame->data[0][static_cast<int>(smoothZoomTop * bg_frame->linesize[0] + smoothZoomLeft)];
-                // if (static_cast<int>(smoothZoomTop) % 2 == 0 && static_cast<int>(smoothZoomLeft) % 2 == 0) {
-                //     zoomData[1] = &bg_frame->data[1][static_cast<int>(smoothZoomTop/2) * bg_frame->linesize[1] + static_cast<int>(smoothZoomLeft/2)];
-                //     zoomData[2] = &bg_frame->data[2][static_cast<int>(smoothZoomTop/2) * bg_frame->linesize[2] + static_cast<int>(smoothZoomLeft/2)];
-                // } else {
-                //     zoomData[1] = NULL;
-                //     zoomData[2] = NULL;
-                // }
 
                 int smoothZoomTopInt = static_cast<int>(smoothZoomTop);
                 int smoothZoomLeftInt = static_cast<int>(smoothZoomLeft);
