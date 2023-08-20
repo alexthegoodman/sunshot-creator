@@ -26,10 +26,10 @@ startWorker(
         outputFile: "stubs/project2/output.mp4",
         zoomInfo: [
             {
-                start: 4000, end: 14000, zoom: 0.5
+                start: 4000, end: 14000, zoom: 0.35
             }, 
             {
-                start: 20000, end: 35000, zoom: 0.6
+                start: 20000, end: 35000, zoom: 0.35
             }
         ]
     }),

@@ -287,7 +287,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     double smoothHeight = 0;
 
     while (1) {
-        printf("Read Frame %d\n", frameIndex);
+        // printf("Read Frame %d\n", frameIndex);
         AVPacket* inputPacket = av_packet_alloc();
         if (av_read_frame(decoderFormatCtx, inputPacket) < 0) {
             // Break the loop if we've read all packets
@@ -341,7 +341,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // *** Inset Video *** //
 
                 // Scale down the frame using libswscale.
-                double scaleMultiple = 0.75; // TODO: should be 0.8?
+                double scaleMultiple = 0.8; // TODO: should be 0.8?
 
                 struct SwsContext* swsCtx = sws_getContext(
                     frame->width, frame->height, (enum AVPixelFormat)frame->format,
@@ -440,7 +440,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 currentMultiplier = targetMultiplier; 
 
                 // (ex. 1.0 is 100% while 0.8 is ~120%)
-                printf("currentMultiplier %f\n", currentMultiplier);
+                // printf("currentMultiplier %f\n", currentMultiplier);
 
                 targetWidth = bg_frame->width * currentMultiplier;
                 targetHeight = bg_frame->height * currentMultiplier;
@@ -454,10 +454,28 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 double displacementWidth = frictionalAnimation(targetWidth, currentWidth, velocityWidth, friction2);
                 double displacementHeight = frictionalAnimation(targetHeight, currentHeight, velocityHeight, friction2);
 
+                // Round small displacements to zero
+                // reduces end of animation shakiness?
+                // if (std::abs(displacementWidth) < 5.0) {
+                //     displacementWidth = 0.0;
+                // }
+
+                // if (std::abs(displacementHeight) < 5.0) {
+                //     displacementHeight = 0.0;
+                // }
+
                 currentWidth += displacementWidth;
                 currentHeight += displacementHeight;
                 velocityWidth += displacementWidth;
                 velocityHeight += displacementHeight;
+
+                // TESTING: if current is within 10, just snap (shakiness test)
+                if (currentWidth + 10 >= targetWidth) {
+                    currentWidth = targetWidth;
+                }
+                if (currentHeight + 10 >= targetHeight) {
+                    currentHeight = targetHeight;
+                }
 
                 // slow down velocity
                 // velocityWidth *= 0.1;
@@ -467,7 +485,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // currentWidth = currentWidth > 10000 ? 10000 : currentWidth < 1 ? 2 : currentWidth;
                 // currentHeight = currentHeight > 10000 ? 10000 : currentHeight < 1 ? 2 : currentHeight;
 
-                printf("zoomingIn %d\n", zoomingIn);
+                // printf("zoomingIn %d\n", zoomingIn);
                 if (zoomingIn) {
                     // when zooming in, the targetWidth should be LESS than the currentWidth 
                     // want to prevent currentWidth from being less than targetWidth
@@ -478,7 +496,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     currentHeight = currentHeight > targetHeight ? targetHeight : currentHeight;
                 }
 
-                printf("Dimensions: %f %f %f %f %f %f\n", targetWidth, targetHeight, currentWidth, currentHeight, displacementWidth, displacementHeight);
+                // printf("Dimensions: %f %f %f %f %f %f\n", targetWidth, targetHeight, currentWidth, currentHeight, displacementWidth, displacementHeight);
 
                 velocityWidth = velocityWidth > 10000 ? 10000 : velocityWidth < -10000 ? -10000 : velocityWidth;
                 velocityHeight = velocityHeight > 10000 ? 10000 : velocityHeight < -10000 ? -10000 : velocityHeight;
@@ -542,7 +560,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     //   if (timeElapsed >= start && timeElapsed < end) {
                       if (timeElapsed >= start && timeElapsed < start + 1000) {
                           if (zoomingIn2 == false) {
-                              printf("Zooming In 2 Init\n");
+                            //   printf("Zooming In 2 Init\n");
                               // set mouse coods to the first mouse event after the start timestamp
                               for (size_t i = 0; i < mouseEventsJson.size(); ++i) {
                                   if (mouseEventsJson[i]["timestamp"] >= timeElapsed) {
@@ -553,13 +571,16 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                               }
                               zoomingIn2 = true;
 
+                            //   printf("setting mouse %f %f %d %f %f\n", mouseX, scaleMultiple, frame->width, currentWidth, windowDataJson["x"].get<double>());
+                            //   printf("setting mouse 2 %f %f %d %f %f\n\n", mouseY, scaleMultiple, frame->height, currentHeight, windowDataJson["y"].get<double>());
+
                               // add windowOffset
-                              mouseX += windowDataJson["x"].get<double>();
-                              mouseY += windowDataJson["y"].get<double>();
+                            //   mouseX -= windowDataJson["x"].get<double>();
+                            //   mouseY -= windowDataJson["y"].get<double>();
 
                               // // scale mouse positions
-                              // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
-                              // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+                              mouseX = mouseX * scaleMultiple + frame->width * 0.1;
+                              mouseY = mouseY * scaleMultiple + frame->height * 0.1;
 
                               if (!autoZoom) {
                                   currentMouseX = mouseX;
@@ -575,14 +596,15 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                           if (zoomingIn2 == true) {
                               zoomingIn2 = false;
 
-                              // TODO: make DRY
+                              // TODO: unneeded? shouldn't this reset to center?
+
                               // add windowOffset
-                              mouseX += windowDataJson["x"].get<double>();
-                              mouseY += windowDataJson["y"].get<double>();
+                              mouseX -= windowDataJson["x"].get<double>();
+                              mouseY -= windowDataJson["y"].get<double>();
 
                               // // scale mouse positions
-                              // mouseX = mouseX * scaleMultiple + frame->width * 0.1;
-                              // mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+                              mouseX = mouseX * scaleMultiple + frame->width * 0.1;
+                              mouseY = mouseY * scaleMultiple + frame->height * 0.1;
 
                               directionX = mouseX - currentMouseX;
                               directionY = mouseY - currentMouseY;
@@ -597,8 +619,6 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                       // }
                     }
                 }
-                
-                printf("Mouse Positions: %f, %f and %f, %f\n", mouseX, mouseY, currentMouseX, currentMouseY);
 
                 if (autoZoom) {
                     if (mouseX != currentMouseX || mouseY != currentMouseY) {
@@ -638,7 +658,9 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 velocityMouseX = velocityMouseX > frameWidth ? frameWidth : velocityMouseX < -(mouseX) ? -(mouseX) : velocityMouseX;
                 velocityMouseY = velocityMouseY > frameHeight ? frameHeight : velocityMouseY < -(mouseY) ? -(mouseY) : velocityMouseY;
 
-                printf("Spring Position: %f, %f\n", currentMouseX, currentMouseY);
+                printf("Mouse Positions: %f, %f and %f, %f\n", mouseX, mouseY, currentMouseX, currentMouseY);
+
+                // printf("Spring Position: %f, %f\n", currentMouseX, currentMouseY);
 
                 // zoomLeft and zoomTop are position of zooming viewport overtop background
                 // then size of zoomed region are with zoomWidth and zoomHeight
@@ -674,7 +696,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     zoomLeft = bg_frame->width - zoomWidth;
                 }
 
-                printf("Mid Info2: %d, %d\n", zoomTop, zoomLeft);
+                // printf("Mid Info2: %d, %d\n", zoomTop, zoomLeft);
 
                 // clamp zoomTop and zoomLeft
                 zoomTop = zoomTop > bg_frame->height ? bg_frame->height : zoomTop;
@@ -735,8 +757,8 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 zoom_frame->pts = av_rescale_q(frameIndex, encoderCodecCtx->time_base, encoderStream->time_base);
                 av_frame_get_buffer(zoom_frame, 0);
 
-                printf("Zoom Frame: %d x %d\n", zoomWidth, zoomHeight);
-                printf("Diagnostic Info: %d x %d\n", zoom_frame->width, zoom_frame->height);
+                // printf("Zoom Frame: %d x %d\n", zoomWidth, zoomHeight);
+                // printf("Diagnostic Info: %d x %d\n", zoom_frame->width, zoom_frame->height);
 
                 // Scale up the zoomed portion to the output frame size using libswscale.
                 struct SwsContext* swsCtxZoom = sws_getContext(
@@ -767,7 +789,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 }
 
                 // check other sws_scale args
-                printf("sws_scale args %d %d %d %d \n", bg_frame->linesize, zoomHeight, zoom_frame->data, zoom_frame->linesize);
+                // printf("sws_scale args %d %d %d %d \n", bg_frame->linesize, zoomHeight, zoom_frame->data, zoom_frame->linesize);
                 
                 // zoom scale
                 sws_scale(swsCtxZoom, (const uint8_t* const*)zoomData, bg_frame->linesize, 0, zoomHeight, zoom_frame->data, zoom_frame->linesize);
@@ -779,7 +801,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 av_frame_free(&frame); // We don't need the original frame anymore.
                 av_frame_free(&scaled_frame); // We don't need the scaled frame anymore.
 
-                printf("Send Frame\n");
+                // printf("Send Frame\n");
 
                 if (avcodec_send_frame(encoderCodecCtx, zoom_frame) < 0) {
                     printf("Error sending frame for encoding\n");
