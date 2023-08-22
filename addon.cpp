@@ -67,6 +67,35 @@ double frictionalAnimation(double target, double current, double velocity, doubl
     return newVelocity;
 }
 
+// double frictionalAnimation(double target, double current, double velocity, double friction, double easeFactor) {
+//     double displacement = target - current;
+    
+//     // Apply friction to velocity
+//     velocity *= friction;
+    
+//     // Apply ease factor
+//     double easedDisplacement = displacement * (1.0 - std::pow(1.0 - easeFactor, std::abs(displacement)));
+    
+//     // Update current position using velocity and eased displacement
+//     current += velocity + easedDisplacement;
+    
+//     return current;
+// }
+
+// double cubicBezierEasing(double t, double x1, double y1, double x2, double y2) {
+//     double tSquared = t * t;
+//     double tCubed = tSquared * t;
+    
+//     double mt = 1.0 - t;
+//     double mtSquared = mt * mt;
+//     double mtCubed = mtSquared * mt;
+    
+//     double x = mtCubed + 3 * x1 * t * mtSquared + 3 * x2 * tSquared * mt + tCubed;
+//     double y = mtCubed + 3 * y1 * t * mtSquared + 3 * y2 * tSquared * mt + tCubed;
+    
+//     return y;
+// }
+
 static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorker::ExecutionProgress& progress)
 {   
     printf("Extracting JSON...\n");
@@ -276,15 +305,20 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     double friction2 = 3; // for frictional
     // double tension3 = 0.01;
     double friction3 = 5; // for frictional
+    double easingFactor = 1.0;
 
     double directionX = 0;
     double directionY = 0;
 
+    double prevZoomTop = 0;
+    double prevZoomLeft = 0;
     double smoothZoomTop = 0;
     double smoothZoomLeft = 0;
 
     double smoothWidth = 0;
     double smoothHeight = 0;
+
+    int animationDuration = 2000;
 
     while (1) {
         // printf("Read Frame %d\n", frameIndex);
@@ -386,6 +420,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 // Search for the current zoom level
                 
+                double t = 1.0;
                 double targetMultiplier = 1.0; // Default value when no zoom effect is active
                 for (nlohmann::json& zoom : zoomInfo) {
                     int start = zoom["start"];
@@ -394,6 +429,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                     // Process each zoom info...
                     if (timeElapsed >= start && timeElapsed < end) {
+                    // if (timeElapsed >= start && timeElapsed < start + animationDuration) {
                     // if (timeElapsed >= zoomInfo.startTimestamp && timeElapsed < zoomInfo.startTimestamp + 1000) {
                         if (zoomingIn == false) {
                             velocity = 0;
@@ -410,8 +446,10 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                         }
                         // Rest of the zooming in code...
                         targetMultiplier = zoomFactor;
+                        // Calculate the interpolation factor t based on the animation progress
+                        t = timeElapsed / (start + animationDuration);
                         // break;
-                    } else if (timeElapsed >= end && timeElapsed < end + 1000) {
+                    } else if (timeElapsed >= end && timeElapsed < end + animationDuration) {
                         if (zoomingIn == true) {
                             velocity = 0;
                             velocityMouseX = 0;
@@ -435,6 +473,8 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     //     // break;
                     // }
                 }
+
+                // printf("t %f\n", t);
                 
                 // this way targetWidth and targetHeight do no change on each frame
                 currentMultiplier = targetMultiplier; 
@@ -455,13 +495,13 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 double displacementHeight = frictionalAnimation(targetHeight, currentHeight, velocityHeight, friction2);
 
                 // Round small displacements to zero
-                // reduces end of animation shakiness?
+                // reduces end of animation shakiness? eh not really
                 // if (std::abs(displacementWidth) < 5.0) {
-                //     displacementWidth = 0.0;
+                //     displacementWidth = displacementWidth < 0 ? -5.0 : 5.0;
                 // }
 
                 // if (std::abs(displacementHeight) < 5.0) {
-                //     displacementHeight = 0.0;
+                //     displacementHeight = displacementHeight < 0 ? -5.0 : 5.0;
                 // }
 
                 currentWidth += displacementWidth;
@@ -469,13 +509,28 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 velocityWidth += displacementWidth;
                 velocityHeight += displacementHeight;
 
+                // Define the control points for your cubic Bezier curve
+                // double x1 = 0.17;
+                // double y1 = 0.45;
+                // double x2 = 0.31;
+                // double y2 = 0.95;
+
+                // // Use the cubicBezierEasing function to interpolate between current and target values
+                // currentWidth = currentWidth + (targetWidth - currentWidth) * cubicBezierEasing(t, x1, y1, x2, y2);
+                // currentHeight = currentHeight + (targetHeight - currentHeight) * cubicBezierEasing(t, x1, y1, x2, y2);
+
+                // if (t == 1.0) {
+                //     currentWidth = targetWidth;
+                //     currentHeight = targetHeight;
+                // }
+
                 // TESTING: if current is within 10, just snap (shakiness test)
-                if (currentWidth + 10 >= targetWidth) {
-                    currentWidth = targetWidth;
-                }
-                if (currentHeight + 10 >= targetHeight) {
-                    currentHeight = targetHeight;
-                }
+                // if (currentWidth + 10 >= targetWidth) {
+                //     currentWidth = targetWidth;
+                // }
+                // if (currentHeight + 10 >= targetHeight) {
+                //     currentHeight = targetHeight;
+                // }
 
                 // slow down velocity
                 // velocityWidth *= 0.1;
@@ -510,8 +565,16 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                     smoothWidth = (smoothingFactor1 * currentWidth + (1 - smoothingFactor1) * smoothWidth);
                     smoothHeight = (smoothingFactor1 * currentHeight + (1 - smoothingFactor1) * smoothHeight);
                 }
+
+                // snap when smooth within 10 (either direction) of target
+                if (std::abs(smoothWidth - targetWidth) < 10) {
+                    smoothWidth = targetWidth;
+                }
+                if (std::abs(smoothHeight - targetHeight) < 10) {
+                    smoothHeight = targetHeight;
+                }
                 
-                printf("Smooth Dimensions: %f %f\n", smoothWidth, smoothHeight);
+                printf("Smooth Dimensions: %f x %f and %f x %f\n", smoothWidth, smoothHeight, targetWidth, targetHeight);
 
                 // Make sure the dimensions are integers and within the frame size.
                 int zoomWidth = round(smoothWidth);
@@ -558,7 +621,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                       // Process each zoom info...
                     //   if (timeElapsed >= start && timeElapsed < end) {
-                      if (timeElapsed >= start && timeElapsed < start + 1000) {
+                      if (timeElapsed >= start && timeElapsed < start + animationDuration) {
                           if (zoomingIn2 == false) {
                             //   printf("Zooming In 2 Init\n");
                               // set mouse coods to the first mouse event after the start timestamp
@@ -592,7 +655,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                               printf("Zooming In 2\n");
                               // break;
                           }
-                      } else if (timeElapsed >= end && timeElapsed < end + 1000) {
+                      } else if (timeElapsed >= end && timeElapsed < end + animationDuration) {
                           if (zoomingIn2 == true) {
                               zoomingIn2 = false;
 
@@ -669,6 +732,9 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 zoomTop = (std::max)(0, static_cast<int>((std::min)(currentMouseY - smoothHeight / 2, static_cast<double>(bg_frame->height) - smoothHeight)));
                 zoomLeft = (std::max)(0, static_cast<int>((std::min)(currentMouseX - smoothWidth / 2, static_cast<double>(bg_frame->width) - smoothWidth)));
 
+                double targetZoomTop = (std::max)(0, static_cast<int>((std::min)(currentMouseY - targetHeight / 2, static_cast<double>(bg_frame->height) - targetHeight)));
+                double targetZoomLeft = (std::max)(0, static_cast<int>((std::min)(currentMouseX - targetWidth / 2, static_cast<double>(bg_frame->width) - targetWidth)));
+
                 // zoomTop = std::max(0, static_cast<int>(std::min(currentMouseY - targetHeight / 2, static_cast<double>(bg_frame->height) - targetHeight)));
                 // zoomLeft = std::max(0, static_cast<int>(std::min(currentMouseX - targetWidth / 2, static_cast<double>(bg_frame->width) - targetWidth)));
 
@@ -706,6 +772,9 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // zoomTop = (zoomTop / 2) * 2;
                 // zoomLeft = (zoomLeft / 2) * 2;
 
+                prevZoomTop = smoothZoomTop;
+                prevZoomLeft = smoothZoomLeft;
+
                 if (frameIndex == 0) {
                     smoothZoomTop = zoomTop;
                     smoothZoomLeft = zoomLeft;
@@ -714,6 +783,14 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
                 smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
                 smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
+
+                // check if smooth value is at least 5 more than previous smooth value, else keep value same
+                // if (std::abs(smoothZoomTop - prevZoomTop) < 5) {
+                //     smoothZoomTop = prevZoomTop;
+                // }
+                // if (std::abs(smoothZoomLeft - prevZoomLeft) < 5) {
+                //     smoothZoomLeft = prevZoomLeft;
+                // }
 
                 // round
                 smoothZoomTop = std::round(smoothZoomTop);
@@ -733,12 +810,6 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 // printf("Mid Info: %d, %d\n", zoomTop, zoomLeft);
 
-                // round to nearest 10
-                // int smoothRemainderTop = smoothZoomTop % 10;
-                // int smoothRemainderLeft = smoothZoomLeft % 10;
-                // smoothZoomTop = smoothRemainderTop < 5 ? smoothZoomTop - smoothRemainderTop : smoothZoomTop + (10 - smoothRemainderTop);
-                // smoothZoomLeft = smoothRemainderLeft < 5 ? smoothZoomLeft - smoothRemainderLeft : smoothZoomLeft + (10 - smoothRemainderLeft);
-
                 // clamp zoomTop and zoomLeft
                 smoothZoomTop = smoothZoomTop > bg_frame->height ? bg_frame->height : smoothZoomTop;
                 smoothZoomLeft = smoothZoomLeft > bg_frame->width ? bg_frame->width : smoothZoomLeft;
@@ -747,7 +818,15 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
                 smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
 
-                printf("Smooth Info: %f, %f\n", smoothZoomTop, smoothZoomLeft);
+                // snap when near end
+                // if (smoothZoomTop > targetZoomTop - 10 && smoothZoomTop < targetZoomTop) {
+                //     smoothZoomTop = targetZoomTop;
+                // }
+                // if (smoothZoomLeft > targetZoomLeft - 10 && smoothZoomLeft < targetZoomLeft) {
+                //     smoothZoomLeft = targetZoomLeft;
+                // }
+
+                printf("Smooth Info: %f, %f and %f, %f\n", smoothZoomTop, smoothZoomLeft, targetZoomTop, targetZoomLeft);
                 
                 // Create a new AVFrame for the zoomed portion.
                 AVFrame* zoom_frame = av_frame_alloc();
