@@ -314,11 +314,15 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     double prevZoomLeft = 0;
     double smoothZoomTop = 0;
     double smoothZoomLeft = 0;
+    double usedZoomTop = 0;
+    double usedZoomLeft = 0;
 
     double smoothWidth = 0;
     double smoothHeight = 0;
 
     int animationDuration = 2000;
+
+    bool enableCoordSmoothing = true;
 
     while (1) {
         // printf("Read Frame %d\n", frameIndex);
@@ -567,10 +571,13 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 }
 
                 // snap when smooth within 10 (either direction) of target
-                if (std::abs(smoothWidth - targetWidth) < 10) {
+                if (std::abs(smoothWidth - targetWidth) < 5) {
+                    // set both so they snap at same time
                     smoothWidth = targetWidth;
+                    smoothHeight = targetHeight;
                 }
-                if (std::abs(smoothHeight - targetHeight) < 10) {
+                if (std::abs(smoothHeight - targetHeight) < 5) {
+                    smoothWidth = targetWidth;
                     smoothHeight = targetHeight;
                 }
                 
@@ -768,65 +775,73 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 zoomTop = zoomTop > bg_frame->height ? bg_frame->height : zoomTop;
                 zoomLeft = zoomLeft > bg_frame->width ? bg_frame->width : zoomLeft;
 
-                // assure even numbers
-                // zoomTop = (zoomTop / 2) * 2;
-                // zoomLeft = (zoomLeft / 2) * 2;
+                if (enableCoordSmoothing) {
+                    prevZoomTop = smoothZoomTop;
+                    prevZoomLeft = smoothZoomLeft;
 
-                prevZoomTop = smoothZoomTop;
-                prevZoomLeft = smoothZoomLeft;
+                    if (frameIndex == 0) {
+                        smoothZoomTop = zoomTop;
+                        smoothZoomLeft = zoomLeft;
+                    }
 
-                if (frameIndex == 0) {
-                    smoothZoomTop = zoomTop;
-                    smoothZoomLeft = zoomLeft;
+                    double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
+                    smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
+                    smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
+
+                    // check if smooth value is at least 5 more than previous smooth value, else keep value same
+                    // if (std::abs(smoothZoomTop - prevZoomTop) < 5) {
+                    //     smoothZoomTop = prevZoomTop;
+                    // }
+                    // if (std::abs(smoothZoomLeft - prevZoomLeft) < 5) {
+                    //     smoothZoomLeft = prevZoomLeft;
+                    // }
+
+                    // round
+                    smoothZoomTop = std::round(smoothZoomTop);
+                    smoothZoomLeft = std::round(smoothZoomLeft);
+
+                    // assure even numbers
+                    smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
+                    smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
+
+                    // max clamps
+                    if (smoothZoomTop + zoomHeight > bg_frame->height) {
+                        smoothZoomTop = bg_frame->height - zoomHeight;
+                    }
+                    if (smoothZoomLeft + zoomWidth > bg_frame->width) {
+                        smoothZoomLeft = bg_frame->width - zoomWidth;
+                    }
+
+                    // printf("Mid Info: %d, %d\n", zoomTop, zoomLeft);
+
+                    // clamp zoomTop and zoomLeft
+                    smoothZoomTop = smoothZoomTop > bg_frame->height ? bg_frame->height : smoothZoomTop;
+                    smoothZoomLeft = smoothZoomLeft > bg_frame->width ? bg_frame->width : smoothZoomLeft;
+
+                    // double sure
+                    smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
+                    smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
+
+                    // snap when near within 10
+                    // if (std::abs(smoothZoomTop - targetZoomTop) < 10) {
+                    //     smoothZoomTop = targetZoomTop;
+                    // }
+                    // if (std::abs(smoothZoomLeft - targetZoomLeft) < 10) {
+                    //     smoothZoomLeft = targetZoomLeft;
+                    // }
+
+                    usedZoomTop = smoothZoomTop;
+                    usedZoomLeft = smoothZoomLeft;
+                } else {
+                    // assure even numbers
+                    zoomTop = (static_cast<int>(zoomTop) % 2 == 0) ? zoomTop : zoomTop - 1;
+                    zoomLeft = (static_cast<int>(zoomLeft) % 2 == 0) ? zoomLeft : zoomLeft - 1;
+
+                    usedZoomTop = zoomTop;
+                    usedZoomLeft = zoomLeft;
                 }
 
-                double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
-                smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
-                smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
-
-                // check if smooth value is at least 5 more than previous smooth value, else keep value same
-                // if (std::abs(smoothZoomTop - prevZoomTop) < 5) {
-                //     smoothZoomTop = prevZoomTop;
-                // }
-                // if (std::abs(smoothZoomLeft - prevZoomLeft) < 5) {
-                //     smoothZoomLeft = prevZoomLeft;
-                // }
-
-                // round
-                smoothZoomTop = std::round(smoothZoomTop);
-                smoothZoomLeft = std::round(smoothZoomLeft);
-
-                // assure even numbers
-                smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
-                smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
-
-                // max clamps
-                if (smoothZoomTop + zoomHeight > bg_frame->height) {
-                    smoothZoomTop = bg_frame->height - zoomHeight;
-                }
-                if (smoothZoomLeft + zoomWidth > bg_frame->width) {
-                    smoothZoomLeft = bg_frame->width - zoomWidth;
-                }
-
-                // printf("Mid Info: %d, %d\n", zoomTop, zoomLeft);
-
-                // clamp zoomTop and zoomLeft
-                smoothZoomTop = smoothZoomTop > bg_frame->height ? bg_frame->height : smoothZoomTop;
-                smoothZoomLeft = smoothZoomLeft > bg_frame->width ? bg_frame->width : smoothZoomLeft;
-
-                // double sure
-                smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
-                smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
-
-                // snap when near end
-                // if (smoothZoomTop > targetZoomTop - 10 && smoothZoomTop < targetZoomTop) {
-                //     smoothZoomTop = targetZoomTop;
-                // }
-                // if (smoothZoomLeft > targetZoomLeft - 10 && smoothZoomLeft < targetZoomLeft) {
-                //     smoothZoomLeft = targetZoomLeft;
-                // }
-
-                printf("Smooth Info: %f, %f and %f, %f\n", smoothZoomTop, smoothZoomLeft, targetZoomTop, targetZoomLeft);
+                printf("Used Info: %f, %f and %f, %f\n", usedZoomTop, usedZoomLeft, targetZoomTop, targetZoomLeft);
                 
                 // Create a new AVFrame for the zoomed portion.
                 AVFrame* zoom_frame = av_frame_alloc();
@@ -848,13 +863,13 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 // Get pointers to the zoomed portion in the background frame.
                 uint8_t* zoomData[3];
 
-                int smoothZoomTopInt = static_cast<int>(smoothZoomTop);
-                int smoothZoomLeftInt = static_cast<int>(smoothZoomLeft);
+                int usedZoomTopInt = static_cast<int>(usedZoomTop);
+                int usedZoomLeftInt = static_cast<int>(usedZoomLeft);
 
-                zoomData[0] = &bg_frame->data[0][smoothZoomTopInt * bg_frame->linesize[0] + smoothZoomLeftInt];
-                if (smoothZoomTopInt % 2 == 0 && smoothZoomLeftInt % 2 == 0) {
-                    zoomData[1] = &bg_frame->data[1][(smoothZoomTopInt/2) * bg_frame->linesize[1] + (smoothZoomLeftInt/2)];
-                    zoomData[2] = &bg_frame->data[2][(smoothZoomTopInt/2) * bg_frame->linesize[2] + (smoothZoomLeftInt/2)];
+                zoomData[0] = &bg_frame->data[0][usedZoomTopInt * bg_frame->linesize[0] + usedZoomLeftInt];
+                if (usedZoomTopInt % 2 == 0 && usedZoomLeftInt % 2 == 0) {
+                    zoomData[1] = &bg_frame->data[1][(usedZoomTopInt/2) * bg_frame->linesize[1] + (usedZoomLeftInt/2)];
+                    zoomData[2] = &bg_frame->data[2][(usedZoomTopInt/2) * bg_frame->linesize[2] + (usedZoomLeftInt/2)];
                 } else {
                     zoomData[1] = NULL;
                     zoomData[2] = NULL;
