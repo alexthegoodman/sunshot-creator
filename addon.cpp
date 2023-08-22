@@ -571,14 +571,15 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 }
 
                 // snap when smooth within 10 (either direction) of target
-                if (std::abs(smoothWidth - targetWidth) < 5) {
+                if ((std::abs(smoothWidth - targetWidth) < 15) || std::abs(smoothHeight - targetHeight) < 15) {
+                    int direction = smoothWidth - targetWidth;
+                    double tenthRemainderW = std::abs(smoothWidth - targetWidth) /  20;
+                    double tenthRemainderH = std::abs(smoothHeight - targetHeight) /  20;
                     // set both so they snap at same time
-                    smoothWidth = targetWidth;
-                    smoothHeight = targetHeight;
-                }
-                if (std::abs(smoothHeight - targetHeight) < 5) {
-                    smoothWidth = targetWidth;
-                    smoothHeight = targetHeight;
+                    // smoothWidth = targetWidth;
+                    // smoothHeight = targetHeight;
+                    smoothWidth = direction < 0 ? smoothWidth + tenthRemainderW : smoothWidth - tenthRemainderW;
+                    smoothHeight = direction < 0 ? smoothHeight + tenthRemainderH : smoothHeight - tenthRemainderH;
                 }
                 
                 printf("Smooth Dimensions: %f x %f and %f x %f\n", smoothWidth, smoothHeight, targetWidth, targetHeight);
