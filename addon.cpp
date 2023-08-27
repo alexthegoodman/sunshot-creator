@@ -96,6 +96,18 @@ double frictionalAnimation(double target, double current, double velocity, doubl
 //     return y;
 // }
 
+double calculateY(double r, double g, double b) {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+double calculateU(double r, double g, double b) {
+    return -0.14713 * r - 0.28886 * g + 0.436 * b;
+}
+
+double calculateV(double r, double g, double b) {
+    return 0.615 * r - 0.51498 * g - 0.10001 * b;
+}
+
 static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorker::ExecutionProgress& progress)
 {   
     printf("Extracting JSON...\n");
@@ -203,6 +215,9 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
         printf("Could not open codec\n");
         return -1;
     }
+
+    // print decoder pixel format
+    printf("Decoder Pixel Format: %d\n", decoderCodecCtx->pix_fmt);
 
     // *** prep enncoding ***
     // Create output context
@@ -360,18 +375,46 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 //  *** Background / Gradient *** //
 
-                // Fill the frame with your desired color.
-                // Note: The exact color values will depend on your pixel format.
-                // For YUV420P, you might fill with (0, 128, 128) for black, for example.
-                // or (130, 190, 45) for light blue
+                // Parameters for gradient colors
+                uint8_t startColorR = 0; // Red
+                uint8_t startColorG = 255;   // Green
+                uint8_t startColorB = 0;   // Blue
+
+                uint8_t endColorR = 0;   // Red
+                uint8_t endColorG = 0;   // Green
+                uint8_t endColorB = 255;     // Blue
+
+                // color shift
+                // int colorShift = 112; // red/yellow
+                int colorShift = 132; // green/blue
+
+                // TODO: pregen data to avoid calculating on each frame
                 for (int y = 0; y < bg_frame->height; ++y) {
                     for (int x = 0; x < bg_frame->width; ++x) {
-                        // Fill Y plane.
-                        bg_frame->data[0][y * bg_frame->linesize[0] + x] = 130; // Y
-                        // Fill U and V planes.
+                        // Calculate normalized gradient position
+                        double gradientPosition = static_cast<double>(x) / bg_frame->width;
+
+                        // Calculate RGB color values
+                        int colorR = static_cast<int>(startColorR + gradientPosition * (endColorR - startColorR));
+                        int colorG = static_cast<int>(startColorG + gradientPosition * (endColorG - startColorG));
+                        int colorB = static_cast<int>(startColorB + gradientPosition * (endColorB - startColorB));
+
+                        // printf("Color: %d, %d, %d\n", colorR, colorG, colorB);
+
+                        // Convert RGB to YUV
+                        double colorY = calculateY(colorR, colorG, colorB);
+                        double colorU = calculateU(colorR, colorG, colorB) + colorShift;
+                        double colorV = calculateV(colorR, colorG, colorB) + colorShift;
+
+                        // printf("YUV: %f, %f, %f\n", colorY, colorU, colorV);
+
+                        // Fill Y plane
+                        bg_frame->data[0][y * bg_frame->linesize[0] + x] = colorY;
+
+                        // Fill U and V planes
                         if (y % 2 == 0 && x % 2 == 0) {
-                            bg_frame->data[1][(y/2) * bg_frame->linesize[1] + (x/2)] = 190; // U
-                            bg_frame->data[2][(y/2) * bg_frame->linesize[2] + (x/2)] = 45; // V
+                            bg_frame->data[1][(y/2) * bg_frame->linesize[1] + (x/2)] = colorU;
+                            bg_frame->data[2][(y/2) * bg_frame->linesize[2] + (x/2)] = colorV;
                         }
                     }
                 }
@@ -380,6 +423,8 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                 // Scale down the frame using libswscale.
                 double scaleMultiple = 0.8; // TODO: should be 0.8?
+
+                // printf("Frame Format: %d, %d\n", frame->format, bg_frame->format);
 
                 struct SwsContext* swsCtx = sws_getContext(
                     frame->width, frame->height, (enum AVPixelFormat)frame->format,
@@ -642,16 +687,26 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                               }
                               zoomingIn2 = true;
 
-                            //   printf("setting mouse %f %f %d %f %f\n", mouseX, scaleMultiple, frame->width, currentWidth, windowDataJson["x"].get<double>());
+                              printf("setting mouse %f %f %d %f %f\n", mouseX, scaleMultiple, frame->width, currentWidth, windowDataJson["x"].get<double>());
                             //   printf("setting mouse 2 %f %f %d %f %f\n\n", mouseY, scaleMultiple, frame->height, currentHeight, windowDataJson["y"].get<double>());
 
                               // add windowOffset
-                            //   mouseX -= windowDataJson["x"].get<double>();
-                            //   mouseY -= windowDataJson["y"].get<double>();
+                              mouseX -= windowDataJson["x"].get<double>() * 0.25; // NOTE: 0.25-0.5 (?)
+                              mouseY -= windowDataJson["y"].get<double>() * 0.25;
 
                               // // scale mouse positions
                               mouseX = mouseX * scaleMultiple + frame->width * 0.1;
                               mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+
+                              // TEST: set mouseX and mouseY to center of frame
+                                // mouseX = ((frame->width  * scaleMultiple) / 2) + frame->width * 0.1;
+                                // mouseY = ((frame->height  * scaleMultiple) / 2) + frame->height * 0.1;
+
+                                // shift
+                                // mouseX += 80; // why?
+                                // mouseY += 130;
+
+                              printf("Mouse %f %f\n\n", mouseX, mouseY);
 
                               if (!autoZoom) {
                                   currentMouseX = mouseX;
@@ -669,16 +724,16 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                               // TODO: unneeded? shouldn't this reset to center?
 
-                              // add windowOffset
-                              mouseX -= windowDataJson["x"].get<double>();
-                              mouseY -= windowDataJson["y"].get<double>();
+                            //   // add windowOffset
+                            //   mouseX -= windowDataJson["x"].get<double>();
+                            //   mouseY -= windowDataJson["y"].get<double>();
 
-                              // // scale mouse positions
-                              mouseX = mouseX * scaleMultiple + frame->width * 0.1;
-                              mouseY = mouseY * scaleMultiple + frame->height * 0.1;
+                            //   // // scale mouse positions
+                            //   mouseX = mouseX * scaleMultiple + frame->width * 0.1;
+                            //   mouseY = mouseY * scaleMultiple + frame->height * 0.1;
 
-                              directionX = mouseX - currentMouseX;
-                              directionY = mouseY - currentMouseY;
+                            //   directionX = mouseX - currentMouseX;
+                            //   directionY = mouseY - currentMouseY;
                               printf("Zooming Out 2\n");
                               // break;
                           }

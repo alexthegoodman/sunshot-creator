@@ -2,3 +2,7 @@ build
 node_modules
 output.mp4
 stubs/project2/
+stubs/postman-wide/
+stubs/steam-square/
+stubs/center-test/
+stubs/center-test-wide/
