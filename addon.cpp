@@ -689,10 +689,14 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
 
                               printf("setting mouse %f %f %d %f %f\n", mouseX, scaleMultiple, frame->width, currentWidth, windowDataJson["x"].get<double>());
                             //   printf("setting mouse 2 %f %f %d %f %f\n\n", mouseY, scaleMultiple, frame->height, currentHeight, windowDataJson["y"].get<double>());
+                            
+                            // DPI scaling (must record in sourceData.json)
+                            mouseX = mouseX * 1.5;
+                            mouseY = mouseY * 1.5;
 
                               // add windowOffset
-                              mouseX -= windowDataJson["x"].get<double>() * 0.25; // NOTE: 0.25-0.5 (?)
-                              mouseY -= windowDataJson["y"].get<double>() * 0.25;
+                              mouseX -= windowDataJson["x"].get<double>();
+                              mouseY -= windowDataJson["y"].get<double>();
 
                               // // scale mouse positions
                               mouseX = mouseX * scaleMultiple + frame->width * 0.1;
