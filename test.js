@@ -98,7 +98,7 @@ const centerTestWide = {
 }
 
 startWorker(
-    JSON.stringify(steamSquare),
+    JSON.stringify(postmanWide),
     (progress) => {
         console.log('Progress:', progress);
     }
