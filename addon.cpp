@@ -1094,6 +1094,11 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     avformat_close_input(&decoderFormatCtx);
     // avcodec_free_context(&decoderCodecCtx); ?
 
+    // -1 signifies completion of generation for simplicity
+    int percentage = -1;
+    char percentDone = static_cast<char>(percentage);
+    progress.Send(&percentDone, 1);
+
     return 0;
 }
 
