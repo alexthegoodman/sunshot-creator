@@ -4,6 +4,57 @@ const { startWorker, print, createGradientVideo } = require('./');
 console.log(print("test"));
 console.log(createGradientVideo())
 
+const backgroundGreenBlue = {
+    backgroundInfo: [
+        {
+            start: {
+                r: 0,
+                g: 255,
+                b: 0
+            },
+            end: {
+                r: 0,
+                g: 0,
+                b: 255
+            }
+        }
+    ]
+}
+
+const backgroundRedYellow = {
+    backgroundInfo: [
+        {
+            start: {
+                r: 255,
+                g: 0,
+                b: 0
+            },
+            end: {
+                r: 255,
+                g: 255,
+                b: 0
+            }
+        }
+    ]
+}
+
+const backgroundPinkPurple = {
+    backgroundInfo: [
+        {
+            start: {
+                r: 232,
+                g: 12,
+                b: 221
+            },
+            end: {
+                r: 141,
+                g: 9,
+                b: 235
+            }
+        }
+    ]
+}
+
 const project1 = {
     duration: 13000,
     positionsFile: "stubs/project1/mousePositions.json",
@@ -49,7 +100,8 @@ const postmanWide = {
         {
             start: 30000, end: 45000, zoom: 0.35
         }
-    ]
+    ],
+    ...backgroundPinkPurple
 }
 
 const steamSquare = {
@@ -65,7 +117,8 @@ const steamSquare = {
         {
             start: 22000, end: 35000, zoom: 0.35
         }
-    ]
+    ],
+    ...backgroundGreenBlue
 }
 
 const centerTest = {

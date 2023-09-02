@@ -19,17 +19,6 @@ using namespace std;
 
 using json = nlohmann::json;
 
-// struct ZoomInfo {
-//     int start;
-//     int end;
-//     double zoom;
-// };
-
-// std::vector<ZoomInfo> mockZoomInfo = {
-//     {1000, 6000, 0.5},
-//     {9000, 14000, 0.6}
-// };
-
 #define GRADIENT_SPEED 2
 #define ZOOM_FACTOR 2.0
 
@@ -100,12 +89,28 @@ double calculateY(double r, double g, double b) {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
+// double calculateU(double r, double g, double b) {
+//     return -0.14713 * r - 0.28886 * g + 0.436 * b;
+// }
+
+// double calculateU(double r, double g, double b) {
+//     return -0.16874 * r - 0.33126 * g + 0.5 * b;
+// }
+
 double calculateU(double r, double g, double b) {
-    return -0.14713 * r - 0.28886 * g + 0.436 * b;
+    return -0.16874 * r - 0.33126 * g + 0.5 * b;
 }
 
+// double calculateV(double r, double g, double b) {
+//     return 0.615 * r - 0.51498 * g - 0.10001 * b;
+// }
+
+// double calculateV(double r, double g, double b) {
+//     return 0.5 * r - 0.41869 * g - 0.08131 * b;
+// }
+
 double calculateV(double r, double g, double b) {
-    return 0.615 * r - 0.51498 * g - 0.10001 * b;
+    return 0.5 * r - 0.41869 * g - 0.08131 * b;
 }
 
 static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorker::ExecutionProgress& progress)
@@ -119,6 +124,7 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
     std::string inputFile = config["inputFile"];
     std::string outputFile = config["outputFile"];
     std::vector<nlohmann::json> zoomInfo = config["zoomInfo"];
+    std::vector<nlohmann::json> backgroundInfo = config["backgroundInfo"];
 
     printf("Duration: %d\n", duration);
 
@@ -379,17 +385,16 @@ static int transform_video (nlohmann::json config, const Nan::AsyncProgressWorke
                 //  *** Background / Gradient *** //
 
                 // Parameters for gradient colors
-                uint8_t startColorR = 0; // Red
-                uint8_t startColorG = 255;   // Green
-                uint8_t startColorB = 0;   // Blue
+                uint8_t startColorR = backgroundInfo[0]["start"]["r"];
+                uint8_t startColorG = backgroundInfo[0]["start"]["g"];
+                uint8_t startColorB = backgroundInfo[0]["start"]["b"];
 
-                uint8_t endColorR = 0;   // Red
-                uint8_t endColorG = 0;   // Green
-                uint8_t endColorB = 255;     // Blue
+                uint8_t endColorR = backgroundInfo[0]["end"]["r"];
+                uint8_t endColorG = backgroundInfo[0]["end"]["g"];
+                uint8_t endColorB = backgroundInfo[0]["end"]["b"];
 
                 // color shift
-                // int colorShift = 112; // red/yellow
-                int colorShift = 132; // green/blue
+                int colorShift = 128;
 
                 // TODO: pregen data to avoid calculating on each frame
                 for (int y = 0; y < bg_frame->height; ++y) {
