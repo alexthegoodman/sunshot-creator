@@ -692,38 +692,39 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                     }
 
                     // ease when smooth within 100 (either direction) of target
-                    double aspectRatio = targetWidth / targetHeight;
-                    if ((std::round(std::abs(smoothWidth - targetWidth)) > 2 && (std::abs(smoothWidth - targetWidth) < 100)) &&
-                        (std::round(std::abs(smoothHeight - targetHeight)) > 2 && std::abs(smoothHeight - targetHeight) < 100))
-                    {
-                        int direction = smoothWidth - targetWidth;
-                        double widthMax = std::abs(smoothWidth - targetWidth);
-                        double heightMax = std::abs(smoothHeight - targetHeight);
-                        double widthRemainder = (100 - std::abs(smoothWidth - targetWidth)) / 20000;
-                        double heightRemainder = (100 - std::abs(smoothHeight - targetHeight)) / 20000;
+                    // double aspectRatio = targetWidth / targetHeight;
+                    // if ((std::round(std::abs(smoothWidth - targetWidth)) > 2 && (std::abs(smoothWidth - targetWidth) < 100)) &&
+                    //     (std::round(std::abs(smoothHeight - targetHeight)) > 2 && std::abs(smoothHeight - targetHeight) < 100))
+                    // {
+                    //     int direction = smoothWidth - targetWidth;
+                    //     double widthMax = std::abs(smoothWidth - targetWidth);
+                    //     double heightMax = std::abs(smoothHeight - targetHeight);
+                    //     double widthRemainder = (100 - std::abs(smoothWidth - targetWidth)) / 20000;
+                    //     double heightRemainder = (100 - std::abs(smoothHeight - targetHeight)) / 20000;
 
-                        printf("Remainder: %f %f\n", widthRemainder, heightRemainder);
+                    //     printf("Remainder: %f %f\n", widthRemainder, heightRemainder);
 
-                        double tenthRemainderW = smoothWidth * widthRemainder;
-                        double tenthRemainderH = smoothHeight * widthRemainder;
+                    //     double tenthRemainderW = smoothWidth * widthRemainder;
+                    //     double tenthRemainderH = smoothHeight * widthRemainder;
 
-                        // clamp widthRemainder based on widthMax depending on direction
-                        widthRemainder = direction < 0 ? widthRemainder > widthMax ? widthMax : widthRemainder : widthRemainder < -widthMax ? -widthMax
-                                                                                                                                            : widthRemainder;
-                        heightRemainder = direction < 0 ? heightRemainder > heightMax ? heightMax : heightRemainder : heightRemainder < -heightMax ? -heightMax
-                                                                                                                                                   : heightRemainder;
+                    //     // clamp widthRemainder based on widthMax depending on direction
+                    //     widthRemainder = direction < 0 ? widthRemainder > widthMax ? widthMax : widthRemainder : widthRemainder < -widthMax ? -widthMax
+                    //                                                                                                                         : widthRemainder;
+                    //     heightRemainder = direction < 0 ? heightRemainder > heightMax ? heightMax : heightRemainder : heightRemainder < -heightMax ? -heightMax
+                    //                                                                                                                                : heightRemainder;
 
-                        // smoothWidth = direction < 0 ? smoothWidth - widthRemainder : smoothWidth + widthRemainder;
-                        // smoothHeight = direction < 0 ? smoothHeight - heightRemainder : smoothHeight + heightRemainder;
+                    //     // smoothWidth = direction < 0 ? smoothWidth - widthRemainder : smoothWidth + widthRemainder;
+                    //     // smoothHeight = direction < 0 ? smoothHeight - heightRemainder : smoothHeight + heightRemainder;
 
-                        // double tenthRemainderW = std::abs(smoothWidth - targetWidth) /  100;
-                        // double tenthRemainderH = std::abs(smoothHeight - targetHeight) /  100;
-                        smoothWidth = direction < 0 ? smoothWidth + tenthRemainderW : smoothWidth - tenthRemainderW;
-                        smoothHeight = direction < 0 ? smoothHeight + tenthRemainderH : smoothHeight - tenthRemainderH;
+                    //     // double tenthRemainderW = std::abs(smoothWidth - targetWidth) /  100;
+                    //     // double tenthRemainderH = std::abs(smoothHeight - targetHeight) /  100;
+                    //     smoothWidth = direction < 0 ? smoothWidth + tenthRemainderW : smoothWidth - tenthRemainderW;
+                    //     smoothHeight = direction < 0 ? smoothHeight + tenthRemainderH : smoothHeight - tenthRemainderH;
 
-                        // smoothWidth = direction < 0 ? smoothWidth + 5 : smoothWidth - 5;
-                        // smoothHeight = direction < 0 ? smoothHeight + 5 : smoothHeight - 5;
-                    }
+                    //     // smoothWidth = direction < 0 ? smoothWidth + 5 : smoothWidth - 5;
+                    //     // smoothHeight = direction < 0 ? smoothHeight + 5 : smoothHeight - 5;
+                    // }
+
                     // if (std::round(std::abs(smoothWidth - targetWidth)) < 5 && std::round(std::abs(smoothHeight - targetHeight)) < 5) {
                     //     smoothWidth = targetWidth + (smoothWidth - targetWidth);
                     //     smoothHeight = targetHeight + (smoothHeight - targetHeight);
@@ -991,8 +992,10 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                     }
 
                     double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
-                    smoothZoomTop = smoothingFactor * zoomTop + (1 - smoothingFactor) * smoothZoomTop;
-                    smoothZoomLeft = smoothingFactor * zoomLeft + (1 - smoothingFactor) * smoothZoomLeft;
+                    double frameProportion = bg_frame->height / bg_frame->width;
+                    double topChange = (1 - smoothingFactor) * smoothZoomTop;
+                    smoothZoomTop = smoothingFactor * zoomTop + topChange;
+                    smoothZoomLeft = smoothingFactor * zoomLeft + (topChange * frameProportion);
 
                     // check if smooth value is at least 5 more than previous smooth value, else keep value same
                     // if (std::abs(smoothZoomTop - prevZoomTop) < 5) {
