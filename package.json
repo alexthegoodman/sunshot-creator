@@ -1,6 +1,6 @@
 {
   "name": "sunshot-creator",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "C++ Native Node Module for SunShot Screen Recorder",
   "main": "index.js",
   "scripts": {
