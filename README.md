@@ -1,13 +1,15 @@
 # SunShot Creator
 
-C++ Native Node Module for SunShot (Electron) which allows for creation of stylized video files.
-
-Make sure FFmpeg is installed with scoop and that it's bin folder is added to your PATH.
-Install nlohmann-json.
+C++ Native Node Module for SunShot (Electron) which allows for creation of video files which follow the users mouse.
 
 ```
 `volta install node@16.16.0`
+Install ffmpeg-shared with scoop
+Install nlohmann-json:x86-windows with vcpkg
+Update binding.gyp with your file paths
 `npm install`
+Will probably need Windows 10 SDK
+Make sure C:/Users/alext/scoop/apps/ffmpeg-shared/7.0 is in your PATH or you'll get the dll load error
 ```
 
 ```

@@ -68,7 +68,8 @@ const project1 = {
         {
             start: 9000, end: 14000, zoom: 0.6
         }
-    ]
+    ],
+    ...backgroundPinkPurple
 }
 
 const project2 = {
@@ -84,7 +85,8 @@ const project2 = {
         {
             start: 20000, end: 35000, zoom: 0.35
         }
-    ]
+    ],
+    ...backgroundPinkPurple
 }
 
 const postmanWide = {
@@ -151,7 +153,7 @@ const centerTestWide = {
 }
 
 startWorker(
-    JSON.stringify(postmanWide),
+    JSON.stringify(project1),
     (progress) => {
         console.log('Progress:', progress);
     }
