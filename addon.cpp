@@ -376,7 +376,7 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
     int animationDuration = 2000;
 
     bool enableDimensionSmoothing = true;
-    bool enableCoordSmoothing = true;
+    bool enableCoordSmoothing = true; // reatains new proportional coords
 
     while (1)
     {
@@ -617,7 +617,7 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                 //     displacementHeight = 0;
                 // }
 
-                printf("Displacement: %f %f\n", displacementWidth, displacementHeight);
+                // printf("Displacement: %f %f\n", displacementWidth, displacementHeight);
 
                 currentWidth += displacementWidth;
                 currentHeight += displacementHeight;
@@ -691,52 +691,13 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                         smoothHeight = (smoothingFactor1 * currentHeight + (1 - smoothingFactor1) * smoothHeight);
                     }
 
-                    // ease when smooth within 100 (either direction) of target
-                    // double aspectRatio = targetWidth / targetHeight;
-                    // if ((std::round(std::abs(smoothWidth - targetWidth)) > 2 && (std::abs(smoothWidth - targetWidth) < 100)) &&
-                    //     (std::round(std::abs(smoothHeight - targetHeight)) > 2 && std::abs(smoothHeight - targetHeight) < 100))
-                    // {
-                    //     int direction = smoothWidth - targetWidth;
-                    //     double widthMax = std::abs(smoothWidth - targetWidth);
-                    //     double heightMax = std::abs(smoothHeight - targetHeight);
-                    //     double widthRemainder = (100 - std::abs(smoothWidth - targetWidth)) / 20000;
-                    //     double heightRemainder = (100 - std::abs(smoothHeight - targetHeight)) / 20000;
-
-                    //     printf("Remainder: %f %f\n", widthRemainder, heightRemainder);
-
-                    //     double tenthRemainderW = smoothWidth * widthRemainder;
-                    //     double tenthRemainderH = smoothHeight * widthRemainder;
-
-                    //     // clamp widthRemainder based on widthMax depending on direction
-                    //     widthRemainder = direction < 0 ? widthRemainder > widthMax ? widthMax : widthRemainder : widthRemainder < -widthMax ? -widthMax
-                    //                                                                                                                         : widthRemainder;
-                    //     heightRemainder = direction < 0 ? heightRemainder > heightMax ? heightMax : heightRemainder : heightRemainder < -heightMax ? -heightMax
-                    //                                                                                                                                : heightRemainder;
-
-                    //     // smoothWidth = direction < 0 ? smoothWidth - widthRemainder : smoothWidth + widthRemainder;
-                    //     // smoothHeight = direction < 0 ? smoothHeight - heightRemainder : smoothHeight + heightRemainder;
-
-                    //     // double tenthRemainderW = std::abs(smoothWidth - targetWidth) /  100;
-                    //     // double tenthRemainderH = std::abs(smoothHeight - targetHeight) /  100;
-                    //     smoothWidth = direction < 0 ? smoothWidth + tenthRemainderW : smoothWidth - tenthRemainderW;
-                    //     smoothHeight = direction < 0 ? smoothHeight + tenthRemainderH : smoothHeight - tenthRemainderH;
-
-                    //     // smoothWidth = direction < 0 ? smoothWidth + 5 : smoothWidth - 5;
-                    //     // smoothHeight = direction < 0 ? smoothHeight + 5 : smoothHeight - 5;
-                    // }
-
-                    // if (std::round(std::abs(smoothWidth - targetWidth)) < 5 && std::round(std::abs(smoothHeight - targetHeight)) < 5) {
-                    //     smoothWidth = targetWidth + (smoothWidth - targetWidth);
-                    //     smoothHeight = targetHeight + (smoothHeight - targetHeight);
-                    // }
-
                     // assure dimension are within frame size
                     smoothWidth = smoothWidth > bg_frame->width ? bg_frame->width : smoothWidth < 1 ? 1
                                                                                                     : smoothWidth;
                     smoothHeight = smoothHeight > bg_frame->height ? bg_frame->height : smoothHeight < 1 ? 1
                                                                                                          : smoothHeight;
 
-                    printf("Smooth Dimensions: %f x %f and %f x %f\n", smoothWidth, smoothHeight, targetWidth, targetHeight);
+                    // printf("Smooth Dimensions: %f x %f and %f x %f\n", smoothWidth, smoothHeight, targetWidth, targetHeight);
 
                     usedWidth = smoothWidth;
                     usedHeight = smoothHeight;
@@ -843,7 +804,7 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                                 // mouseX += 80; // why?
                                 // mouseY += 130;
 
-                                printf("Mouse %f %f\n\n", mouseX, mouseY);
+                                // printf("Mouse %f %f\n\n", mouseX, mouseY);
 
                                 if (!autoZoom)
                                 {
@@ -900,7 +861,7 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                         double displacementMouseX = frictionalAnimation(mouseX, currentMouseX, velocityMouseX, friction3);
                         double displacementMouseY = frictionalAnimation(mouseY, currentMouseY, velocityMouseY, friction3);
 
-                        printf("Displacement Position: %f, %f\n", displacementMouseX, displacementMouseY);
+                        // printf("Displacement Position: %f, %f\n", displacementMouseX, displacementMouseY);
 
                         // TODO: smoothing?
 
@@ -931,16 +892,18 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                 velocityMouseY = velocityMouseY > frameHeight ? frameHeight : velocityMouseY < -(mouseY) ? -(mouseY)
                                                                                                          : velocityMouseY;
 
-                printf("Mouse Positions: %f, %f and %f, %f\n", mouseX, mouseY, currentMouseX, currentMouseY);
+                // printf("Mouse Positions: %f, %f and %f, %f\n", mouseX, mouseY, currentMouseX, currentMouseY);
 
                 // printf("Spring Position: %f, %f\n", currentMouseX, currentMouseY);
 
                 // zoomLeft and zoomTop are position of zooming viewport overtop background
                 // then size of zoomed region are with zoomWidth and zoomHeight
 
+                // printf("Smooth Info: %f, %f\n", smoothHeight, smoothWidth);
+
                 // Center the zoom on the current mouse position
-                zoomTop = (std::max)(0, static_cast<int>((std::min)(currentMouseY - smoothHeight / 2, static_cast<double>(bg_frame->height) - smoothHeight)));
-                zoomLeft = (std::max)(0, static_cast<int>((std::min)(currentMouseX - smoothWidth / 2, static_cast<double>(bg_frame->width) - smoothWidth)));
+                zoomTop = (std::max)(0, static_cast<int>((std::min)(currentMouseY - zoomHeight / 2, static_cast<double>(bg_frame->height) - zoomHeight)));
+                zoomLeft = (std::max)(0, static_cast<int>((std::min)(currentMouseX - zoomWidth / 2, static_cast<double>(bg_frame->width) - zoomWidth)));
 
                 double targetZoomTop = (std::max)(0, static_cast<int>((std::min)(currentMouseY - targetHeight / 2, static_cast<double>(bg_frame->height) - targetHeight)));
                 double targetZoomLeft = (std::max)(0, static_cast<int>((std::min)(currentMouseX - targetWidth / 2, static_cast<double>(bg_frame->width) - targetWidth)));
@@ -974,11 +937,11 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                     zoomLeft = bg_frame->width - zoomWidth;
                 }
 
-                // printf("Mid Info2: %d, %d\n", zoomTop, zoomLeft);
-
                 // clamp zoomTop and zoomLeft
                 zoomTop = zoomTop > bg_frame->height ? bg_frame->height : zoomTop;
                 zoomLeft = zoomLeft > bg_frame->width ? bg_frame->width : zoomLeft;
+
+                // printf("Mid Info2: %d, %d\n", zoomTop, zoomLeft);
 
                 if (enableCoordSmoothing)
                 {
@@ -991,24 +954,20 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                         smoothZoomLeft = zoomLeft;
                     }
 
-                    double smoothingFactor = 0.02; // Adjust this value to change the amount of smoothing (0-1)
                     double frameProportion = bg_frame->height / bg_frame->width;
+
+                    // seems to get confused but proportionality is maintained
+                    // double smoothingFactor = 0.95; // Adjust this value to change the amount of smoothing (0-1)
+                    // double topChange = (1 - smoothingFactor) * smoothZoomTop;
+                    // smoothZoomTop = smoothingFactor * zoomTop + topChange;
+                    // smoothZoomLeft = smoothingFactor * zoomLeft + (topChange * frameProportion);
+
+                    double smoothingFactor = 0.95; // Adjust this value to change the amount of smoothing (0-1)
                     double topChange = (1 - smoothingFactor) * smoothZoomTop;
-                    smoothZoomTop = smoothingFactor * zoomTop + topChange;
-                    smoothZoomLeft = smoothingFactor * zoomLeft + (topChange * frameProportion);
+                    smoothZoomTop = zoomTop + topChange;
+                    smoothZoomLeft = zoomLeft + (topChange * frameProportion);
 
-                    // check if smooth value is at least 5 more than previous smooth value, else keep value same
-                    // if (std::abs(smoothZoomTop - prevZoomTop) < 5) {
-                    //     smoothZoomTop = prevZoomTop;
-                    // }
-                    // if (std::abs(smoothZoomLeft - prevZoomLeft) < 5) {
-                    //     smoothZoomLeft = prevZoomLeft;
-                    // }
-
-                    // if ((std::abs(smoothZoomTop - targetZoomTop) < 100) || std::abs(smoothZoomLeft - targetZoomLeft) < 100) {
-                    //     smoothZoomTop = targetZoomTop - 100;
-                    //     smoothZoomLeft = targetZoomLeft - 100;
-                    // }
+                    // printf("Smooth Info: %d, %d\n", smoothZoomTop, smoothZoomLeft);
 
                     // no negative numbers
                     smoothZoomTop = smoothZoomTop < 0 ? 0 : smoothZoomTop;
@@ -1041,14 +1000,6 @@ static int transform_video(nlohmann::json config, const Nan::AsyncProgressWorker
                     // double sure
                     smoothZoomTop = (static_cast<int>(smoothZoomTop) % 2 == 0) ? smoothZoomTop : smoothZoomTop - 1;
                     smoothZoomLeft = (static_cast<int>(smoothZoomLeft) % 2 == 0) ? smoothZoomLeft : smoothZoomLeft - 1;
-
-                    // snap when near within 10
-                    // if (std::abs(smoothZoomTop - targetZoomTop) < 10) {
-                    //     smoothZoomTop = targetZoomTop;
-                    // }
-                    // if (std::abs(smoothZoomLeft - targetZoomLeft) < 10) {
-                    //     smoothZoomLeft = targetZoomLeft;
-                    // }
 
                     usedZoomTop = smoothZoomTop;
                     usedZoomLeft = smoothZoomLeft;

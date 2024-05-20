@@ -4,6 +4,23 @@ const { startWorker, print, createGradientVideo } = require('./');
 console.log(print("test"));
 console.log(createGradientVideo())
 
+const backgroundCommonos = {
+    backgroundInfo: [
+        {
+            start: {
+                r: 153,
+                g: 199,
+                b: 162
+            },
+            end: {
+                r: 200,
+                g: 204,
+                b: 124
+            }
+        }
+    ]
+}
+
 const backgroundGreenBlue = {
     backgroundInfo: [
         {
@@ -70,6 +87,46 @@ const project1 = {
         }
     ],
     ...backgroundPinkPurple
+}
+
+const test1 = {
+    duration: 35000,
+    positionsFile: "stubs/test1/mousePositions.json",
+    sourceFile: "stubs/test1/sourceData.json",
+    inputFile: "stubs/test1/60fps.mp4",
+    outputFile: "stubs/test1/output.mp4",
+    zoomInfo: [
+        {
+            start: 4000, end: 10000, zoom: 0.5
+        }, 
+        {
+            start: 16000, end: 28000, zoom: 0.4
+        }
+    ],
+    ...backgroundCommonos
+}
+
+const tour1 = {
+    duration: 150000, // 2.5 minutes or 150 seconds
+    positionsFile: "stubs/tour1/mousePositions.json",
+    sourceFile: "stubs/tour1/sourceData.json",
+    inputFile: "stubs/tour1/60fps.mp4",
+    outputFile: "stubs/tour1/output.mp4",
+    zoomInfo: [
+        {
+            start: 4000, end: 18000, zoom: 0.5
+        }, 
+        {
+            start: 32000, end: 48000, zoom: 0.6
+        },
+        {
+            start: 60000, end: 80000, zoom: 0.5
+        },
+        {
+            start: 136000, end: 148000, zoom: 0.6
+        }
+    ],
+    ...backgroundCommonos
 }
 
 const project2 = {
@@ -153,7 +210,7 @@ const centerTestWide = {
 }
 
 startWorker(
-    JSON.stringify(project1),
+    JSON.stringify(tour1),
     (progress) => {
         console.log('Progress:', progress);
     }
